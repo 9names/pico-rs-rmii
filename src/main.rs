@@ -1,11 +1,11 @@
 #![no_std]
 #![no_main]
 
-use cortex_m_rt::entry;
 use defmt::*;
 use defmt_rtt as _;
 use embedded_hal::digital::v2::OutputPin;
 use embedded_time::rate::*;
+use hal::entry;
 use panic_probe as _;
 use rp2040_hal as hal;
 
