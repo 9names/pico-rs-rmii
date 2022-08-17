@@ -1,8 +1,12 @@
+use embedded_hal::digital::v2::{OutputPin, PinState, StatefulOutputPin};
+
 use hal::gpio::{DynFunction, DynPin, DynPinMode};
 use hal::pac;
 use hal::pio::PIOExt;
 use pio::SideSet;
 use rp2040_hal as hal;
+
+use crate::mdio::Mdio;
 
 pub struct EthPins {
     pub ref_clk: DynPin,
@@ -94,29 +98,6 @@ fn setup_dma(dma: &pac::DMA) {
         w.data_size().size_byte();
         w
     });
-}
-
-pub struct Uninitialized;
-pub struct Initialized;
-
-struct Mdio<State> {
-    md_io: DynPin,
-    md_ck: DynPin,
-    _phantom: core::marker::PhantomData<State>,
-}
-
-impl Mdio<Uninitialized> {
-    pub fn init(mut md_io: DynPin, mut md_ck: DynPin) -> Mdio<Initialized> {
-        Mdio {
-            md_ck,
-            md_io,
-            _phantom: core::marker::PhantomData,
-        }
-    }
-}
-impl Mdio<Initialized> {
-    fn read(addr: u8, reg: usize) {}
-    fn write(addr: u8, reg: usize, value: u8) {}
 }
 
 pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut pac::RESETS) {

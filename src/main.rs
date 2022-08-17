@@ -9,8 +9,13 @@ use hal::entry;
 use panic_probe as _;
 use rp2040_hal as hal;
 
+mod lan8720a;
+mod mdio;
 mod pio;
-use crate::pio::{init_eth, EthPins};
+use crate::{
+    mdio::Mdio,
+    pio::{init_eth, EthPins},
+};
 
 use hal::{
     clocks::*,
@@ -59,8 +64,26 @@ fn main() -> ! {
         tx_d1: pins.gpio11.into(),
         tx_en: pins.gpio12.into(),
     };
+    let mut mdio = Mdio::init(pins.gpio17.into(), pins.gpio16.into());
 
     init_eth(eth_pins, pac.PIO0, pac.DMA, &mut pac.RESETS);
+    // Retrieve the LAN8720A address
+    let mut phy_address: Option<u32> = None;
+    for i in 0..32 {
+        if mdio.read(i, 0, &mut delay) != 0xffff {
+            phy_address = Some(i as u32);
+            break;
+        }
+    }
+    mdio.write(
+        phy_address.expect("phy not found") as u8,
+        lan8720a::AUTO_NEGO_REG,
+        lan8720a::AUTO_NEGO_REG_IEEE802_3
+            | lan8720a::AUTO_NEGO_REG_100_ABI
+            | lan8720a::AUTO_NEGO_REG_100_FD_ABI,
+        &mut delay,
+    );
+    defmt::info!("phy address {:?}", phy_address.unwrap());
 
     let mut led_pin = pins.gpio25.into_push_pull_output();
     loop {
