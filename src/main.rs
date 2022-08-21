@@ -53,8 +53,8 @@ fn main() -> ! {
 
     let eth_pins = EthPins {
         ref_clk: pins.gpio21.into(),
-        md_io: pins.gpio14.into(),
-        md_clk: pins.gpio15.into(),
+        md_io: pins.gpio16.into(),
+        md_clk: pins.gpio17.into(),
         // Those 3 pins should be one after the other
         rx_d0: pins.gpio6.into(),
         rx_d1: pins.gpio7.into(),
@@ -64,29 +64,47 @@ fn main() -> ! {
         tx_d1: pins.gpio11.into(),
         tx_en: pins.gpio12.into(),
     };
-    let mut mdio = Mdio::init(pins.gpio17.into(), pins.gpio16.into());
-
+    let mut mdio = Mdio::init(pins.gpio14.into(), pins.gpio15.into());
+    delay.delay_ms(1000);
     init_eth(eth_pins, pac.PIO0, pac.DMA, &mut pac.RESETS);
+    delay.delay_ms(1000);
     // Retrieve the LAN8720A address
-    let mut phy_address: Option<u32> = None;
+    let mut phy_address: Option<u8> = None;
     for i in 0..32 {
         if mdio.read(i, 0, &mut delay) != 0xffff {
-            phy_address = Some(i as u32);
+            phy_address = Some(i as u8);
             break;
         }
     }
+    let phy_address = phy_address.expect("phy not found");
     mdio.write(
-        phy_address.expect("phy not found") as u8,
+        phy_address,
         lan8720a::AUTO_NEGO_REG,
         lan8720a::AUTO_NEGO_REG_IEEE802_3
             | lan8720a::AUTO_NEGO_REG_100_ABI
             | lan8720a::AUTO_NEGO_REG_100_FD_ABI,
         &mut delay,
     );
-    defmt::info!("phy address {:?}", phy_address.unwrap());
+    mdio.write(phy_address, lan8720a::BASIC_CONTROL_REG, 0x1000, &mut delay);
+    defmt::info!("phy address {:?}", phy_address);
 
     let mut led_pin = pins.gpio25.into_push_pull_output();
     loop {
+        let mdio_status = mdio.read(phy_address, lan8720a::BASIC_STATUS_REG, &mut delay);
+        defmt::info!("mdio status {:X}", mdio_status);
+
+        if (mdio_status & lan8720a::BASIC_STATUS_REG_LINK_STATUS) != 0 {
+            defmt::info!("link up")
+        } else {
+            defmt::info!("link down")
+        }
+
+        if (mdio_status & lan8720a::BASIC_STATUS_REG_AUTO_NEGO_COMPLETE) != 0 {
+            defmt::info!("auto-negotiation complete")
+        } else {
+            defmt::info!("auto-negotiation not yet done")
+        }
+
         info!("on!");
         led_pin.set_high().unwrap();
         delay.delay_ms(500);
