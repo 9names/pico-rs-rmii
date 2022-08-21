@@ -23,7 +23,7 @@ impl Mdio<Uninitialized> {
     }
 }
 impl Mdio<Initialized> {
-    pub fn read(&mut self, addr: u8, reg: usize, delay: &mut dyn DelayUs<u16>) -> u16 {
+    pub fn read(&mut self, addr: u8, reg: u16, delay: &mut dyn DelayUs<u16>) -> u16 {
         self.md_ck.into_push_pull_output();
         self.md_io.into_push_pull_output();
 
