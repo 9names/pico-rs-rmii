@@ -188,7 +188,7 @@ pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut 
         .autopush(true)
         .push_threshold(8)
         .buffers(hal::pio::Buffers::OnlyRx)
-        .clock_divisor(2.0)
+        .clock_divisor_fixed_point(2, 0)
         .build(sm0);
 
     // Prepare SM for TX program
@@ -196,7 +196,7 @@ pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut 
     let (mut sm_tx, _, _) = hal::pio::PIOBuilder::from_program(installed_tx)
         .out_pins(tx_d0_index, 2)
         .side_set_pin_base(tx_d0_index + 2)
-        .clock_divisor(1.0)
+        .clock_divisor_fixed_point(1, 0)
         .build(sm1);
 
     sm_tx.set_pindirs([
