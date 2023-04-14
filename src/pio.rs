@@ -1,5 +1,3 @@
-use embedded_hal::digital::v2::{OutputPin, PinState, StatefulOutputPin};
-
 use hal::gpio::{DynFunction, DynPin, DynPinMode};
 use hal::pac;
 use hal::pio::PIOExt;
