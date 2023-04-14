@@ -98,7 +98,7 @@ impl Mdio<Initialized> {
         self.bit_clock_out(delay, 0);
 
         for offset in 0..16 {
-            let bit = (value >> (15 >> offset)) & 0x01;
+            let bit = (value >> (15 - offset)) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
         crate::debug!("mdio write {:X}", value);
