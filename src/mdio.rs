@@ -121,7 +121,7 @@ impl Mdio<Initialized> {
     fn bit_clock_in(&mut self, delay: &mut dyn DelayUs<u16>) -> u16 {
         self.md_ck.set_low().unwrap();
         delay.delay_us(1);
-        self.md_ck.set_low().unwrap();
+        self.md_ck.set_high().unwrap();
         self.md_io.into_floating_input();
         let bit = if self.md_io.is_high().unwrap() { 1 } else { 0 };
         delay.delay_us(1);
