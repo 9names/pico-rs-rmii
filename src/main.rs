@@ -1,25 +1,24 @@
 #![no_std]
 #![no_main]
 
-use defmt::*;
-use defmt_rtt as _;
-use embedded_hal::digital::v2::OutputPin;
-use embedded_time::rate::*;
-use hal::entry;
-use panic_probe as _;
-use rp2040_hal as hal;
-
-mod lan8720a;
-mod mdio;
-mod pio;
 use crate::{
     mdio::Mdio,
     pio::{init_eth, EthPins},
 };
 
+use defmt::*;
+use defmt_rtt as _;
+use embedded_hal::digital::v2::OutputPin;
+use fugit::HertzU32;
+mod lan8720a;
+mod mdio;
+mod pio;
+use panic_probe as _;
+use rp2040_hal as hal;
+
 use hal::{
     clocks::*,
-    pac,
+    entry, pac,
     pll::{common_configs::PLL_USB_48MHZ, setup_pll_blocking, PLLConfig},
     sio::Sio,
     watchdog::Watchdog,
@@ -42,7 +41,7 @@ fn main() -> ! {
         &mut pac.RESETS,
         pac.WATCHDOG,
     );
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().integer());
+    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let pins = hal::gpio::Pins::new(
         pac.IO_BANK0,
@@ -122,23 +121,24 @@ fn setup_clocks(
     resets: &mut pac::RESETS,
     watchdog: pac::WATCHDOG,
 ) -> ClocksManager {
-    let xosc_crystal_freq = 12_000_000u32;
-    let xosc = setup_xosc_blocking(xosc, xosc_crystal_freq.Hz()).unwrap_or_else(|_| {
+    let xosc_crystal_freq = HertzU32::MHz(12);
+    let xosc = setup_xosc_blocking(xosc, xosc_crystal_freq).unwrap_or_else(|_| {
         error!("Xosc failed to start");
         loop {}
     });
 
     // Configure watchdog tick generation to tick over every microsecond
     let mut watchdog = Watchdog::new(watchdog);
-    watchdog.enable_tick_generation((xosc_crystal_freq / 1_000_000) as u8);
+    let watchdog_freq = HertzU32::MHz(1);
+    watchdog.enable_tick_generation((xosc_crystal_freq / watchdog_freq) as u8);
 
     // External clock from RMII module
-    let clock_gpio_freq = 50_000_000u32;
+    let clock_gpio_freq = HertzU32::MHz(50);
 
     let mut clocks: ClocksManager = ClocksManager::new(clocks);
 
-    pub const PLL_SYS_100MHZ: PLLConfig<Megahertz> = PLLConfig {
-        vco_freq: Megahertz(1500),
+    pub const PLL_SYS_100MHZ: PLLConfig = PLLConfig {
+        vco_freq: HertzU32::MHz(1500),
         refdiv: 1,
         post_div1: 5,
         post_div2: 3,
@@ -191,17 +191,19 @@ fn setup_clocks(
             .configure_clock(&pll_usb, pll_usb.get_freq())?;
 
         // CLK RTC = PLL USB (48MHz) / 1024 = 46875Hz
-        clocks.rtc_clock.configure_clock(&pll_usb, 46875u32.Hz())?;
+        clocks
+            .rtc_clock
+            .configure_clock(&pll_usb, HertzU32::Hz(46875))?;
 
         // CLK PERI = clk_sys. Used as reference clock for Peripherals. No dividers so just select and enable
         // Normally choose clk_sys or clk_usb
         clocks
             .peripheral_clock
-            .configure_clock(&clocks.system_clock, clock_gpio_freq.Hz())?;
+            .configure_clock(&clocks.system_clock, clock_gpio_freq)?;
 
         clocks
             .gpio_output0_clock
-            .configure_clock(&clocks.system_clock, clock_gpio_freq.Hz())?;
+            .configure_clock(&clocks.system_clock, clock_gpio_freq)?;
 
         Ok(clocks)
     })()
