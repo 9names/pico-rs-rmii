@@ -43,8 +43,10 @@ impl EthPins {
             &mut self.rx_d1,
         ]
         .map(|pin| pin.try_into_mode(DynPinMode::Function(target_pio)).unwrap());
-
-        self.ref_clk.into_push_pull_output();
+        // Set up clock source for ETH board. Requires that the source clock is 50Mhz
+        self.ref_clk
+            .try_into_mode(DynPinMode::Function(DynFunction::Clock))
+            .unwrap();
         self.md_io.into_push_pull_output();
         self.md_clk.into_push_pull_output();
         self
