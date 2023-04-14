@@ -42,7 +42,7 @@ impl EthPins {
             &mut self.rx_d0,
             &mut self.rx_d1,
         ]
-        .map(|mut pin| pin.try_into_mode(DynPinMode::Function(target_pio)).unwrap());
+        .map(|pin| pin.try_into_mode(DynPinMode::Function(target_pio)).unwrap());
 
         self.ref_clk.into_push_pull_output();
         self.md_io.into_push_pull_output();
