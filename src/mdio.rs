@@ -40,13 +40,13 @@ impl Mdio<Initialized> {
         self.bit_clock_out(delay, 0);
 
         // PA5
-        for offset in (0..5).rev() {
+        for offset in (0..5u8).rev() {
             let bit = (addr >> offset) & 0x01;
-            self.bit_clock_out(delay, bit as u8);
+            self.bit_clock_out(delay, bit);
         }
 
         // RA5
-        for offset in (0..5).rev() {
+        for offset in (0..5u8).rev() {
             let bit = (reg >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
@@ -82,13 +82,13 @@ impl Mdio<Initialized> {
         self.bit_clock_out(delay, 1);
 
         // PA5
-        for offset in (0..5).rev() {
+        for offset in (0..5u8).rev() {
             let bit = (addr >> offset) & 0x01;
-            self.bit_clock_out(delay, bit as u8);
+            self.bit_clock_out(delay, bit);
         }
 
         // RA5
-        for offset in (0..5).rev() {
+        for offset in (0..5u8).rev() {
             let bit = (reg >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
@@ -97,7 +97,7 @@ impl Mdio<Initialized> {
         self.bit_clock_out(delay, 1);
         self.bit_clock_out(delay, 0);
 
-        for offset in (0..16).rev() {
+        for offset in (0..16u8).rev() {
             let bit = (value >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }

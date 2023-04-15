@@ -71,9 +71,9 @@ fn main() -> ! {
     let mut phy_address: Option<u8> = None;
     while phy_address.is_none() {
         debug!("searching for phy");
-        for i in 0..32 {
+        for i in 0..32u8 {
             if mdio.read(i, 0, &mut delay) != 0xffff {
-                phy_address = Some(i as u8);
+                phy_address = Some(i);
                 break;
             }
         }
@@ -159,7 +159,7 @@ fn setup_clocks(
 
     let pll_sys = setup_pll_blocking(
         pll_sys,
-        xosc.operating_frequency().into(),
+        xosc.operating_frequency(),
         PLL_SYS_100MHZ,
         &mut clocks,
         resets,
@@ -172,7 +172,7 @@ fn setup_clocks(
 
     let pll_usb = setup_pll_blocking(
         pll_usb,
-        xosc.operating_frequency().into(),
+        xosc.operating_frequency(),
         PLL_USB_48MHZ,
         &mut clocks,
         resets,

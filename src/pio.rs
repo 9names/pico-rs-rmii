@@ -75,7 +75,7 @@ fn clear_dma_channel(dma: &pac::DMA, channel: u8) {
 fn setup_dma(dma: &pac::DMA) {
     let dma_rx_ch = 0;
     let dma_tx_ch = 1;
-    [dma_rx_ch, dma_tx_ch].map(|channel| clear_dma_channel(&dma, channel));
+    [dma_rx_ch, dma_tx_ch].map(|channel| clear_dma_channel(dma, channel));
 
     // Configure RX channel
     dma.ch[dma_rx_ch as usize].ch_ctrl_trig.write(|w| {
