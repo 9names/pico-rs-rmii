@@ -4,12 +4,10 @@ use hal::pio::PIOExt;
 use pio::SideSet;
 use rp2040_hal as hal;
 
-use crate::mdio::Mdio;
+use crate::mdio::{Initialized, Mdio};
 
 pub struct EthPins {
     pub ref_clk: DynPin,
-    pub md_io: DynPin,
-    pub md_clk: DynPin,
     pub tx_d0: DynPin,
     pub tx_d1: DynPin,
     pub tx_en: DynPin,
@@ -47,8 +45,6 @@ impl EthPins {
         self.ref_clk
             .try_into_mode(DynPinMode::Function(DynFunction::Clock))
             .unwrap();
-        self.md_io.into_push_pull_output();
-        self.md_clk.into_push_pull_output();
         self
     }
 }
@@ -107,8 +103,6 @@ pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut 
     pins = pins.setup_pins(TargetPio::Pio0);
 
     setup_dma(&dma);
-
-    let mdio = Mdio::init(pins.md_io, pins.md_clk);
 
     let rx_program = {
         let mut a = pio::Assembler::<32>::new();

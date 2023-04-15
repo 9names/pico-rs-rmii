@@ -46,8 +46,6 @@ fn main() -> ! {
 
     let eth_pins = EthPins {
         ref_clk: pins.gpio21.into(),
-        md_io: pins.gpio16.into(),
-        md_clk: pins.gpio17.into(),
         // Those 3 pins should be one after the other
         rx_d0: pins.gpio6.into(),
         rx_d1: pins.gpio7.into(),
