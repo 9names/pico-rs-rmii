@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub const BASIC_CONTROL_REG: u16 = 0;
 pub const BASIC_CONTROL_REG_DUPLEX_MODE: u16 = 1 << 8;
 pub const BASIC_CONTROL_REG_REST_AUTO_NEG: u16 = 1 << 9;
