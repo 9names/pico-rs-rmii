@@ -93,26 +93,34 @@ fn main() -> ! {
     defmt::info!("phy address {:?}", phy_address);
 
     let mut led_pin = pins.gpio25.into_push_pull_output();
+    let mut last_link_up = false;
+    let mut last_neg_done = false;
     loop {
         let mdio_status = mdio.read(phy_address, lan8720a::BASIC_STATUS_REG, &mut delay);
-        defmt::info!("mdio status {:X}", mdio_status);
+        defmt::debug!("mdio status {:X}", mdio_status);
 
-        if (mdio_status & lan8720a::BASIC_STATUS_REG_LINK_STATUS) != 0 {
-            defmt::info!("link up")
-        } else {
-            defmt::info!("link down")
+        let link_up = (mdio_status & lan8720a::BASIC_STATUS_REG_LINK_STATUS) != 0;
+        if link_up != last_link_up {
+            if link_up {
+                defmt::info!("link up")
+            } else {
+                defmt::info!("link down")
+            }
+            last_link_up = link_up;
         }
 
-        if (mdio_status & lan8720a::BASIC_STATUS_REG_AUTO_NEGO_COMPLETE) != 0 {
-            defmt::info!("auto-negotiation complete")
-        } else {
-            defmt::info!("auto-negotiation not yet done")
+        let neg_done = (mdio_status & lan8720a::BASIC_STATUS_REG_AUTO_NEGO_COMPLETE) != 0;
+        if neg_done != last_neg_done {
+            if neg_done {
+                defmt::info!("auto-negotiation complete")
+            } else {
+                defmt::info!("auto-negotiation not yet done")
+            }
+            last_neg_done = neg_done;
         }
 
-        info!("on!");
         led_pin.set_high().unwrap();
         delay.delay_ms(500);
-        info!("off!");
         led_pin.set_low().unwrap();
         delay.delay_ms(500);
     }
