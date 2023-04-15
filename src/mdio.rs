@@ -40,14 +40,14 @@ impl Mdio<Initialized> {
         self.bit_clock_out(delay, 0);
 
         // PA5
-        for offset in 0..5 {
-            let bit = (addr >> (4 - offset)) & 0x01;
+        for offset in (0..5).rev() {
+            let bit = (addr >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
 
         // RA5
-        for offset in 0..5 {
-            let bit = (reg >> (4 - offset)) & 0x01;
+        for offset in (0..5).rev() {
+            let bit = (reg >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
 
@@ -82,14 +82,14 @@ impl Mdio<Initialized> {
         self.bit_clock_out(delay, 1);
 
         // PA5
-        for offset in 0..5 {
-            let bit = (addr >> (4 - offset)) & 0x01;
+        for offset in (0..5).rev() {
+            let bit = (addr >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
 
         // RA5
-        for offset in 0..5 {
-            let bit = (reg >> (4 - offset)) & 0x01;
+        for offset in (0..5).rev() {
+            let bit = (reg >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
 
@@ -97,8 +97,8 @@ impl Mdio<Initialized> {
         self.bit_clock_out(delay, 1);
         self.bit_clock_out(delay, 0);
 
-        for offset in 0..16 {
-            let bit = (value >> (15 - offset)) & 0x01;
+        for offset in (0..16).rev() {
+            let bit = (value >> offset) & 0x01;
             self.bit_clock_out(delay, bit as u8);
         }
         crate::debug!("mdio write {:X}", value);
