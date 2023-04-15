@@ -40,7 +40,8 @@ fn main() -> ! {
         pac.CLOCKS,
         &mut pac.RESETS,
         pac.WATCHDOG,
-    );
+    )
+    .expect("Failed to configure clocks");
     let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     let pins = hal::gpio::Pins::new(
@@ -126,6 +127,16 @@ fn main() -> ! {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum ClockError {
+    InvalidClock,
+    XoscStartErr,
+    PllSysErr,
+    PllUsbErr,
+    SubClockConfigErr,
+}
+
 fn setup_clocks(
     xosc: pac::XOSC,
     pll_sys: pac::PLL_SYS,
@@ -133,12 +144,10 @@ fn setup_clocks(
     clocks: pac::CLOCKS,
     resets: &mut pac::RESETS,
     watchdog: pac::WATCHDOG,
-) -> ClocksManager {
+) -> Result<ClocksManager, ClockError> {
     let xosc_crystal_freq = HertzU32::MHz(12);
-    let xosc = setup_xosc_blocking(xosc, xosc_crystal_freq).unwrap_or_else(|_| {
-        error!("Xosc failed to start");
-        loop {}
-    });
+    let xosc =
+        setup_xosc_blocking(xosc, xosc_crystal_freq).map_err(|_| ClockError::XoscStartErr)?;
 
     // Configure watchdog tick generation to tick over every microsecond
     let mut watchdog = Watchdog::new(watchdog);
@@ -164,11 +173,7 @@ fn setup_clocks(
         &mut clocks,
         resets,
     )
-    .unwrap_or_else(|_| {
-        error!("Failed to start SYS PLL");
-        // led_pin.set_high().unwrap();
-        loop {}
-    });
+    .map_err(|_| ClockError::PllSysErr)?;
 
     let pll_usb = setup_pll_blocking(
         pll_usb,
@@ -177,55 +182,51 @@ fn setup_clocks(
         &mut clocks,
         resets,
     )
-    .unwrap_or_else(|_| {
-        error!("Failed to start USB PLL");
-        loop {}
-    });
+    .map_err(|_| ClockError::PllUsbErr)?;
 
-    let clocks = (|| {
-        // CLK_REF = XOSC (12MHz) / 1 = 12MHz
-        clocks
-            .reference_clock
-            .configure_clock(&xosc, xosc.get_freq())?;
+    // CLK_REF = XOSC (12MHz) / 1 = 12MHz
+    clocks
+        .reference_clock
+        .configure_clock(&xosc, xosc.get_freq())
+        .map_err(|_| ClockError::SubClockConfigErr)?;
 
-        // CLK SYS = PLL SYS (100MHz) / 1 = 100MHz
-        clocks
-            .system_clock
-            .configure_clock(&pll_sys, pll_sys.get_freq())?;
+    // CLK SYS = PLL SYS (100MHz) / 1 = 100MHz
+    clocks
+        .system_clock
+        .configure_clock(&pll_sys, pll_sys.get_freq())
+        .map_err(|_| ClockError::SubClockConfigErr)?;
 
-        // CLK USB = PLL USB (48MHz) / 1 = 48MHz
-        clocks
-            .usb_clock
-            .configure_clock(&pll_usb, pll_usb.get_freq())?;
+    // CLK USB = PLL USB (48MHz) / 1 = 48MHz
+    clocks
+        .usb_clock
+        .configure_clock(&pll_usb, pll_usb.get_freq())
+        .map_err(|_| ClockError::SubClockConfigErr)?;
 
-        // CLK ADC = PLL USB (48MHZ) / 1 = 48MHz
-        clocks
-            .adc_clock
-            .configure_clock(&pll_usb, pll_usb.get_freq())?;
+    // CLK ADC = PLL USB (48MHZ) / 1 = 48MHz
+    clocks
+        .adc_clock
+        .configure_clock(&pll_usb, pll_usb.get_freq())
+        .map_err(|_| ClockError::SubClockConfigErr)?;
 
-        // CLK RTC = PLL USB (48MHz) / 1024 = 46875Hz
-        clocks
-            .rtc_clock
-            .configure_clock(&pll_usb, HertzU32::Hz(46875))?;
+    // CLK RTC = PLL USB (48MHz) / 1024 = 46875Hz
+    clocks
+        .rtc_clock
+        .configure_clock(&pll_usb, HertzU32::Hz(46875))
+        .map_err(|_| ClockError::SubClockConfigErr)?;
 
-        // CLK PERI = clk_sys. Used as reference clock for Peripherals. No dividers so just select and enable
-        // Normally choose clk_sys or clk_usb
-        clocks
-            .peripheral_clock
-            .configure_clock(&clocks.system_clock, clock_gpio_freq)?;
-
-        clocks
-            .gpio_output0_clock
-            .configure_clock(&clocks.system_clock, clock_gpio_freq)?;
-
-        Ok(clocks)
-    })()
-    .unwrap_or_else(|_: ClockError| {
-        error!("Failed to set clocks");
-        loop {}
-    });
+    // CLK PERI = clk_sys. Used as reference clock for Peripherals. No dividers so just select and enable
+    // Normally choose clk_sys or clk_usb
+    clocks
+        .peripheral_clock
+        .configure_clock(&clocks.system_clock, clock_gpio_freq)
+        .map_err(|_| ClockError::SubClockConfigErr)?;
 
     clocks
+        .gpio_output0_clock
+        .configure_clock(&clocks.system_clock, clock_gpio_freq)
+        .map_err(|_| ClockError::SubClockConfigErr)?;
+
+    Ok(clocks)
 }
 
 #[link_section = ".boot2"]
