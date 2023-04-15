@@ -4,8 +4,6 @@ use hal::pio::PIOExt;
 use pio::SideSet;
 use rp2040_hal as hal;
 
-use crate::mdio::{Initialized, Mdio};
-
 pub struct EthPins {
     pub ref_clk: DynPin,
     pub tx_d0: DynPin,

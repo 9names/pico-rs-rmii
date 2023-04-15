@@ -2,27 +2,16 @@ use embedded_hal::blocking::delay::DelayUs;
 use embedded_hal::digital::v2::{InputPin, OutputPin, PinState};
 use rp2040_hal::gpio::DynPin;
 
-pub struct Uninitialized;
-pub struct Initialized;
-
-//    timer: &'a mut dyn embedded_hal::timer::CountDown<Time = u32>,
-
-pub struct Mdio<State> {
+pub struct Mdio {
     md_io: DynPin,
     md_ck: DynPin,
-    _phantom: core::marker::PhantomData<State>,
 }
 
-impl Mdio<Uninitialized> {
-    pub fn init(md_io: DynPin, md_ck: DynPin) -> Mdio<Initialized> {
-        Mdio {
-            md_io,
-            md_ck,
-            _phantom: core::marker::PhantomData,
-        }
+impl Mdio {
+    pub fn new(md_io: DynPin, md_ck: DynPin) -> Mdio {
+        Mdio { md_io, md_ck }
     }
-}
-impl Mdio<Initialized> {
+
     pub fn read(&mut self, addr: u8, reg: u16, delay: &mut dyn DelayUs<u16>) -> u16 {
         self.md_ck.into_push_pull_output();
         self.md_io.into_push_pull_output();

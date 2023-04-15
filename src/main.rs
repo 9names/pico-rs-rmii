@@ -55,10 +55,11 @@ fn main() -> ! {
         tx_d1: pins.gpio11.into(),
         tx_en: pins.gpio12.into(),
     };
-    let mut mdio = Mdio::init(pins.gpio14.into(), pins.gpio15.into());
+    let mut mdio = Mdio::new(pins.gpio14.into(), pins.gpio15.into());
     delay.delay_ms(1000);
     init_eth(eth_pins, pac.PIO0, pac.DMA, &mut pac.RESETS);
     delay.delay_ms(1000);
+
     // Retrieve the LAN8720A address
     let mut phy_address: Option<u8> = None;
     while phy_address.is_none() {
