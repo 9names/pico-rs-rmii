@@ -69,12 +69,17 @@ fn main() -> ! {
     delay.delay_ms(1000);
     // Retrieve the LAN8720A address
     let mut phy_address: Option<u8> = None;
-    for i in 0..32 {
-        if mdio.read(i, 0, &mut delay) != 0xffff {
-            phy_address = Some(i as u8);
-            break;
+    while phy_address.is_none() {
+        debug!("searching for phy");
+        for i in 0..32 {
+            if mdio.read(i, 0, &mut delay) != 0xffff {
+                phy_address = Some(i as u8);
+                break;
+            }
         }
+        delay.delay_us(1);
     }
+
     let phy_address = phy_address.expect("phy not found");
     mdio.write(
         phy_address,
