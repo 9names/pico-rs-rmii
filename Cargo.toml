@@ -71,5 +71,3 @@ incremental = false
 lto = 'fat'
 opt-level = 3
 
-[patch.crates-io]
-rp2040-hal = { path = "../rp-hal-upstream/rp2040-hal" }
