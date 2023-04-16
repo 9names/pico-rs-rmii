@@ -10,6 +10,7 @@ use defmt::*;
 use defmt_rtt as _;
 use embedded_hal::digital::v2::OutputPin;
 mod clocks;
+mod delay;
 mod lan8720a;
 mod mdio;
 mod pio;
@@ -65,7 +66,7 @@ fn main() -> ! {
     while phy_address.is_none() {
         debug!("searching for phy");
         for i in 0..32u8 {
-            if mdio.read(i, 0, &mut delay) != 0xffff {
+            if mdio.read(i, 0) != 0xffff {
                 phy_address = Some(i);
                 break;
             }
@@ -80,16 +81,15 @@ fn main() -> ! {
         lan8720a::AUTO_NEGO_REG_IEEE802_3
             | lan8720a::AUTO_NEGO_REG_100_ABI
             | lan8720a::AUTO_NEGO_REG_100_FD_ABI,
-        &mut delay,
     );
-    mdio.write(phy_address, lan8720a::BASIC_CONTROL_REG, 0x1000, &mut delay);
+    mdio.write(phy_address, lan8720a::BASIC_CONTROL_REG, 0x1000);
     defmt::info!("phy address {:?}", phy_address);
 
     let mut led_pin = pins.gpio25.into_push_pull_output();
     let mut last_link_up = false;
     let mut last_neg_done = false;
     loop {
-        let mdio_status = mdio.read(phy_address, lan8720a::BASIC_STATUS_REG, &mut delay);
+        let mdio_status = mdio.read(phy_address, lan8720a::BASIC_STATUS_REG);
         defmt::debug!("mdio status {:X}", mdio_status);
 
         let link_up = (mdio_status & lan8720a::BASIC_STATUS_REG_LINK_STATUS) != 0;

@@ -94,11 +94,11 @@ fn setup_dma(dma: &pac::DMA) {
     });
 }
 
-pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut pac::RESETS) {
+pub fn init_eth(pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut pac::RESETS) {
     let rx_d0_index = pins.rx_d0.id().num;
     let tx_d0_index = pins.tx_d0.id().num;
 
-    pins = pins.setup_pins(TargetPio::Pio0);
+    _ = pins.setup_pins(TargetPio::Pio0);
 
     setup_dma(&dma);
 
