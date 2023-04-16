@@ -1,6 +1,17 @@
 use crate::delay::Delay;
 use embedded_hal::digital::v2::{InputPin, OutputPin, PinState};
+use ieee802_3_miim::Miim;
 use rp2040_hal::gpio::DynPin;
+
+impl Miim for Mdio {
+    fn read(&mut self, phy: u8, reg: u8) -> u16 {
+        self.read_reg(phy, reg)
+    }
+
+    fn write(&mut self, phy: u8, reg: u8, data: u16) {
+        self.write_reg(phy, reg, data)
+    }
+}
 
 pub struct Mdio {
     md_io: DynPin,
@@ -17,7 +28,7 @@ impl Mdio {
         }
     }
 
-    pub fn read(&mut self, addr: u8, reg: u16) -> u16 {
+    pub fn read_reg(&mut self, addr: u8, reg: u8) -> u16 {
         self.md_ck.into_push_pull_output();
         self.md_io.into_push_pull_output();
 
@@ -42,7 +53,7 @@ impl Mdio {
         // RA5
         for offset in (0..5u8).rev() {
             let bit = (reg >> offset) & 0x01;
-            self.bit_clock_out(bit as u8);
+            self.bit_clock_out(bit);
         }
 
         // TA
@@ -59,7 +70,7 @@ impl Mdio {
         data
     }
 
-    pub fn write(&mut self, addr: u8, reg: u16, value: u16) {
+    pub fn write_reg(&mut self, addr: u8, reg: u8, value: u16) {
         self.md_ck.into_push_pull_output();
         self.md_io.into_push_pull_output();
 
@@ -84,7 +95,7 @@ impl Mdio {
         // RA5
         for offset in (0..5u8).rev() {
             let bit = (reg >> offset) & 0x01;
-            self.bit_clock_out(bit as u8);
+            self.bit_clock_out(bit);
         }
 
         // TA

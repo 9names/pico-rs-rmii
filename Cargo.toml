@@ -13,6 +13,7 @@ defmt-rtt = "0.4"
 embedded-hal = { version = "0.2", features = ["unproven"] }
 
 fugit = "0.3.6"
+ieee802_3_miim = "0.8"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 pio = "0.2"
 

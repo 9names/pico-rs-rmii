@@ -11,9 +11,9 @@ use defmt_rtt as _;
 use embedded_hal::digital::v2::OutputPin;
 mod clocks;
 mod delay;
-mod lan8720a;
 mod mdio;
 mod pio;
+use ieee802_3_miim::{phy::LAN8720A, Miim};
 use panic_probe as _;
 use rp2040_hal as hal;
 
@@ -75,24 +75,19 @@ fn main() -> ! {
     }
 
     let phy_address = phy_address.expect("phy not found");
-    mdio.write(
-        phy_address,
-        lan8720a::AUTO_NEGO_REG,
-        lan8720a::AUTO_NEGO_REG_IEEE802_3
-            | lan8720a::AUTO_NEGO_REG_100_ABI
-            | lan8720a::AUTO_NEGO_REG_100_FD_ABI,
-    );
-    mdio.write(phy_address, lan8720a::BASIC_CONTROL_REG, 0x1000);
     defmt::info!("phy address {:?}", phy_address);
+    let mut t = LAN8720A::new(mdio, phy_address);
+    defmt::info!("Initialising phy");
+    t.phy_init();
+    defmt::info!("Blocking until link is up");
+    t.block_until_link();
+    defmt::info!("Link is up");
 
     let mut led_pin = pins.gpio25.into_push_pull_output();
     let mut last_link_up = false;
     let mut last_neg_done = false;
     loop {
-        let mdio_status = mdio.read(phy_address, lan8720a::BASIC_STATUS_REG);
-        defmt::debug!("mdio status {:X}", mdio_status);
-
-        let link_up = (mdio_status & lan8720a::BASIC_STATUS_REG_LINK_STATUS) != 0;
+        let link_up = t.link_established();
         if link_up != last_link_up {
             if link_up {
                 defmt::info!("link up")
@@ -102,10 +97,21 @@ fn main() -> ! {
             last_link_up = link_up;
         }
 
-        let neg_done = (mdio_status & lan8720a::BASIC_STATUS_REG_AUTO_NEGO_COMPLETE) != 0;
+        let speed = t.link_speed();
+        let neg_done = speed.is_some();
         if neg_done != last_neg_done {
             if neg_done {
-                defmt::info!("auto-negotiation complete")
+                let speed_str = if let Some(speed) = speed {
+                    match speed {
+                        ieee802_3_miim::phy::PhySpeed::HalfDuplexBase10T => "HalfDuplexBase10T",
+                        ieee802_3_miim::phy::PhySpeed::FullDuplexBase10T => "FullDuplexBase10T",
+                        ieee802_3_miim::phy::PhySpeed::HalfDuplexBase100Tx => "HalfDuplexBase100Tx",
+                        ieee802_3_miim::phy::PhySpeed::FullDuplexBase100Tx => "FullDuplexBase100Tx",
+                    }
+                } else {
+                    "Unknown"
+                };
+                defmt::info!("auto-negotiation complete, speed is {}", speed_str)
             } else {
                 defmt::info!("auto-negotiation not yet done")
             }
