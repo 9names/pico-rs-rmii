@@ -4,6 +4,8 @@ use hal::pio::PIOExt;
 use pio::SideSet;
 use rp2040_hal as hal;
 
+use crate::mdio::Mdio;
+
 pub struct EthPins {
     pub ref_clk: DynPin,
     pub md_io: DynPin,
@@ -40,9 +42,11 @@ impl EthPins {
             &mut self.rx_d0,
             &mut self.rx_d1,
         ]
-        .map(|mut pin| pin.try_into_mode(DynPinMode::Function(target_pio)).unwrap());
-
-        self.ref_clk.into_push_pull_output();
+        .map(|pin| pin.try_into_mode(DynPinMode::Function(target_pio)).unwrap());
+        // Set up clock source for ETH board. Requires that the source clock is 50Mhz
+        self.ref_clk
+            .try_into_mode(DynPinMode::Function(DynFunction::Clock))
+            .unwrap();
         self.md_io.into_push_pull_output();
         self.md_clk.into_push_pull_output();
         self
@@ -71,7 +75,7 @@ fn clear_dma_channel(dma: &pac::DMA, channel: u8) {
 fn setup_dma(dma: &pac::DMA) {
     let dma_rx_ch = 0;
     let dma_tx_ch = 1;
-    [dma_rx_ch, dma_tx_ch].map(|channel| clear_dma_channel(&dma, channel));
+    [dma_rx_ch, dma_tx_ch].map(|channel| clear_dma_channel(dma, channel));
 
     // Configure RX channel
     dma.ch[dma_rx_ch as usize].ch_ctrl_trig.write(|w| {
@@ -96,29 +100,6 @@ fn setup_dma(dma: &pac::DMA) {
     });
 }
 
-pub struct Uninitialized;
-pub struct Initialized;
-
-struct Mdio<State> {
-    md_io: DynPin,
-    md_ck: DynPin,
-    _phantom: core::marker::PhantomData<State>,
-}
-
-impl Mdio<Uninitialized> {
-    pub fn init(mut md_io: DynPin, mut md_ck: DynPin) -> Mdio<Initialized> {
-        Mdio {
-            md_ck,
-            md_io,
-            _phantom: core::marker::PhantomData,
-        }
-    }
-}
-impl Mdio<Initialized> {
-    fn read(addr: u8, reg: usize) {}
-    fn write(addr: u8, reg: usize, value: u8) {}
-}
-
 pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut pac::RESETS) {
     let rx_d0_index = pins.rx_d0.id().num;
     let tx_d0_index = pins.tx_d0.id().num;
@@ -135,12 +116,12 @@ pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut 
         let mut wrap_source = a.label();
 
         // Wait PHY to be ready
-        a.wait(0, pio::WaitSource::PIN, 2);
-        a.wait(0, pio::WaitSource::PIN, 0);
-        a.wait(0, pio::WaitSource::PIN, 1);
-        a.wait(1, pio::WaitSource::PIN, 2);
-        a.wait(1, pio::WaitSource::PIN, 0);
-        a.wait(1, pio::WaitSource::PIN, 1);
+        a.wait(0, pio::WaitSource::PIN, 2, false);
+        a.wait(0, pio::WaitSource::PIN, 0, false);
+        a.wait(0, pio::WaitSource::PIN, 1, false);
+        a.wait(1, pio::WaitSource::PIN, 2, false);
+        a.wait(1, pio::WaitSource::PIN, 0, false);
+        a.wait(1, pio::WaitSource::PIN, 1, false);
 
         // Set the label for wrapping the program back to here
         a.bind(&mut wrap_target);
@@ -201,25 +182,25 @@ pub fn init_eth(mut pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut 
 
     // Prepare SM for RX program
     let installed_rx = pio.install(&rx_program).unwrap();
-    let (sm_rx, _, _) = rp2040_hal::pio::PIOBuilder::from_program(installed_rx)
+    let (sm_rx, _, _) = hal::pio::PIOBuilder::from_program(installed_rx)
         .in_pin_base(rx_d0_index)
         .in_shift_direction(hal::pio::ShiftDirection::Right)
         .autopush(true)
         .push_threshold(8)
         .buffers(hal::pio::Buffers::OnlyRx)
-        .clock_divisor(2.0)
+        .clock_divisor_fixed_point(2, 0)
         .build(sm0);
 
     // Prepare SM for TX program
     let installed_tx = pio.install(&tx_program).unwrap();
-    let (mut sm_tx, _, _) = rp2040_hal::pio::PIOBuilder::from_program(installed_tx)
+    let (mut sm_tx, _, _) = hal::pio::PIOBuilder::from_program(installed_tx)
         .out_pins(tx_d0_index, 2)
         .side_set_pin_base(tx_d0_index + 2)
-        .clock_divisor(1.0)
+        .clock_divisor_fixed_point(1, 0)
         .build(sm1);
 
     sm_tx.set_pindirs([
-        (tx_d0_index + 0, hal::pio::PinDir::Output),
+        (tx_d0_index, hal::pio::PinDir::Output),
         (tx_d0_index + 1, hal::pio::PinDir::Output),
         (tx_d0_index + 2, hal::pio::PinDir::Output),
     ]);

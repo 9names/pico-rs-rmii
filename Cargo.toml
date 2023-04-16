@@ -1,37 +1,23 @@
 [package]
 authors = ["Maxime BORGES <contact@maximeborg.es>"]
-edition = "2018"
+edition = "2021"
 readme = "README.md"
 name = "pico-rs-rmii-ethernet"
 version = "0.1.0"
-resolver = "2"
 
 [dependencies]
-cortex-m = "0.7.3"
-cortex-m-rt = "0.7.1"
-embedded-hal = { version = "0.2.6", features=["unproven"] }
-embedded-time = "0.12.1"
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+defmt = "0.3"
+defmt-rtt = "0.4"
+embedded-hal = { version = "0.2", features = ["unproven"] }
 
-defmt = "0.3.0"
-defmt-rtt = "0.3.1"
-panic-probe = { version = "0.3.0", features = ["print-defmt"] }
+fugit = "0.3.6"
+panic-probe = { version = "0.3", features = ["print-defmt"] }
+pio = "0.2"
 
-rp2040-hal = { git = "https://github.com/rp-rs/rp-hal", branch="main", features=["rt"] }
-pio = { git = "https://github.com/rp-rs/pio-rs.git", branch = "main" }
-
-rp2040-boot2 = { git = "https://github.com/rp-rs/rp2040-boot2-rs", branch="main" }
-pio-proc = { git = "https://github.com/rp-rs/pio-rs.git", branch = "main" }
-
-[features]
-default = [
-    "defmt-default",
-]
-defmt-default = []
-defmt-trace = []
-defmt-debug = []
-defmt-info = []
-defmt-warn = []
-defmt-error = []
+rp2040-hal = { version = "0.8", features = ["rt", "defmt", "rom-func-cache", "critical-section-impl"] }
+rp2040-boot2 = "0.2"
 
 # cargo build/run
 [profile.dev]
@@ -39,7 +25,7 @@ codegen-units = 1
 debug = 2
 debug-assertions = true
 incremental = false
-opt-level = 0
+opt-level = 1
 overflow-checks = true
 
 # cargo build/run --release
@@ -53,19 +39,19 @@ opt-level = 3
 overflow-checks = false
 
 # do not optimize proc-macro crates = faster builds from scratch
-# [profile.dev.build-override]
-# codegen-units = 8
-# debug = false
-# debug-assertions = false
-# opt-level = 0
-# overflow-checks = false
+[profile.dev.build-override]
+codegen-units = 8
+debug = false
+debug-assertions = false
+opt-level = 0
+overflow-checks = false
 
-# [profile.release.build-override]
-# codegen-units = 8
-# debug = false
-# debug-assertions = false
-# opt-level = 0
-# overflow-checks = false
+[profile.release.build-override]
+codegen-units = 8
+debug = false
+debug-assertions = false
+opt-level = 0
+overflow-checks = false
 
 # cargo test
 [profile.test]
@@ -84,3 +70,6 @@ debug-assertions = false
 incremental = false
 lto = 'fat'
 opt-level = 3
+
+[patch.crates-io]
+rp2040-hal = { path = "../rp-hal-upstream/rp2040-hal" }
