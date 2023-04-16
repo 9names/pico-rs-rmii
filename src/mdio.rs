@@ -66,7 +66,7 @@ impl Mdio {
             data <<= 1;
             data |= self.bit_clock_in();
         }
-        crate::debug!("mdio read {:X}", data);
+        crate::trace!("mdio read {:X}", data);
         data
     }
 
@@ -106,7 +106,7 @@ impl Mdio {
             let bit = (value >> offset) & 0x01;
             self.bit_clock_out(bit as u8);
         }
-        crate::debug!("mdio write {:X}", value);
+        crate::trace!("mdio write {:X}", value);
         self.md_io.into_floating_input();
     }
 
