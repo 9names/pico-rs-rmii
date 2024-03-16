@@ -46,17 +46,24 @@ fn main() -> ! {
     );
 
     let eth_pins = EthPins {
-        ref_clk: pins.gpio21.into(),
+        ref_clk: pins.gpio21.into_function().into_pull_type().into_dyn_pin(),
         // Those 3 pins should be one after the other
-        rx_d0: pins.gpio6.into(),
-        rx_d1: pins.gpio7.into(),
-        crs: pins.gpio8.into(),
+        rx_d0: pins.gpio6.into_function().into_pull_type().into_dyn_pin(),
+        rx_d1: pins.gpio7.into_function().into_pull_type().into_dyn_pin(),
+        crs: pins.gpio8.into_function().into_pull_type().into_dyn_pin(),
         // Those 3 pins should be one after the other
-        tx_d0: pins.gpio10.into(),
-        tx_d1: pins.gpio11.into(),
-        tx_en: pins.gpio12.into(),
+        tx_d0: pins.gpio10.into_function().into_pull_type().into_dyn_pin(),
+        tx_d1: pins.gpio11.into_function().into_pull_type().into_dyn_pin(),
+        tx_en: pins.gpio12.into_function().into_pull_type().into_dyn_pin(),
     };
-    let mut mdio = Mdio::new(pins.gpio14.into(), pins.gpio15.into());
+
+    let mut mdio = Mdio::new(
+        hal::gpio::InOutPin::new(pins.gpio14.into_push_pull_output()),
+        pins.gpio15
+            .into_push_pull_output()
+            .into_pull_type()
+            .into_dyn_pin(),
+    );
     delay.delay_ms(1000);
     init_eth(eth_pins, pac.PIO0, pac.DMA, &mut pac.RESETS);
     delay.delay_ms(1000);

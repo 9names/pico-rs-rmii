@@ -1,7 +1,10 @@
 use crate::delay::Delay;
 use embedded_hal::digital::v2::{InputPin, OutputPin, PinState};
 use ieee802_3_miim::Miim;
-use rp2040_hal::gpio::DynPin;
+use rp2040_hal::gpio::{
+    bank0::Gpio14, DynPinId, FunctionSio, FunctionSioOutput, InOutPin, Pin, PullDown, PullNone,
+    SioOutput,
+};
 
 impl Miim for Mdio {
     fn read(&mut self, phy: u8, reg: u8) -> u16 {
@@ -14,13 +17,16 @@ impl Miim for Mdio {
 }
 
 pub struct Mdio {
-    md_io: DynPin,
-    md_ck: DynPin,
+    md_io: InOutPin<Pin<Gpio14, FunctionSio<SioOutput>, PullDown>>,
+    md_ck: Pin<DynPinId, FunctionSioOutput, PullNone>,
     delay: crate::delay::Delay,
 }
 
 impl Mdio {
-    pub fn new(md_io: DynPin, md_ck: DynPin) -> Mdio {
+    pub fn new(
+        md_io: InOutPin<Pin<Gpio14, FunctionSio<SioOutput>, PullDown>>,
+        md_ck: Pin<DynPinId, FunctionSioOutput, PullNone>,
+    ) -> Mdio {
         Mdio {
             md_io,
             md_ck,
@@ -29,9 +35,6 @@ impl Mdio {
     }
 
     pub fn read_reg(&mut self, addr: u8, reg: u8) -> u16 {
-        self.md_ck.into_push_pull_output();
-        self.md_io.into_push_pull_output();
-
         // Clear the state machine by clocking out 32 bits
         for _ in 0..32 {
             self.bit_clock_out(1);
@@ -59,7 +62,8 @@ impl Mdio {
         // TA
         self.bit_clock_out(0);
         self.bit_clock_out(0);
-        self.md_io.into_floating_input();
+        // set pin as floating
+        self.md_io.set_high().unwrap();
 
         let mut data: u16 = 0;
         for _ in 0..16 {
@@ -71,9 +75,6 @@ impl Mdio {
     }
 
     pub fn write_reg(&mut self, addr: u8, reg: u8, value: u16) {
-        self.md_ck.into_push_pull_output();
-        self.md_io.into_push_pull_output();
-
         // Clear the state machine by clocking out 32 bits
         for _ in 0..32 {
             self.bit_clock_out(1);
@@ -107,7 +108,8 @@ impl Mdio {
             self.bit_clock_out(bit as u8);
         }
         crate::trace!("mdio write {:X}", value);
-        self.md_io.into_floating_input();
+        // Leave the pin floating
+        self.md_io.set_high().unwrap();
     }
 
     fn bit_clock_out(&mut self, bit: u8) {
@@ -127,7 +129,8 @@ impl Mdio {
         self.md_ck.set_low().unwrap();
         self.delay.delay_us(1);
         self.md_ck.set_high().unwrap();
-        self.md_io.into_floating_input();
+        // set pin floating
+        self.md_io.set_high().unwrap();
         let bit = if self.md_io.is_high().unwrap() { 1 } else { 0 };
         self.delay.delay_us(1);
         bit

@@ -12,7 +12,7 @@ impl Delay {
         Delay { timer }
     }
     fn get_us(&mut self) -> u32 {
-        self.timer.timerawl.read().bits()
+        self.timer.timerawl().read().bits()
     }
 
     pub fn delay_us(&mut self, us: u32) {

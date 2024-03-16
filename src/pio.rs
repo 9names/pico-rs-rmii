@@ -1,17 +1,17 @@
-use hal::gpio::{DynFunction, DynPin, DynPinMode};
+use hal::gpio::{DynFunction, DynPinId, FunctionClock, FunctionPio0, Pin, PullNone};
 use hal::pac;
 use hal::pio::PIOExt;
 use pio::SideSet;
 use rp2040_hal as hal;
 
 pub struct EthPins {
-    pub ref_clk: DynPin,
-    pub tx_d0: DynPin,
-    pub tx_d1: DynPin,
-    pub tx_en: DynPin,
-    pub rx_d0: DynPin,
-    pub rx_d1: DynPin,
-    pub crs: DynPin,
+    pub ref_clk: Pin<DynPinId, FunctionClock, PullNone>,
+    pub tx_d0: Pin<DynPinId, FunctionPio0, PullNone>,
+    pub tx_d1: Pin<DynPinId, FunctionPio0, PullNone>,
+    pub tx_en: Pin<DynPinId, FunctionPio0, PullNone>,
+    pub rx_d0: Pin<DynPinId, FunctionPio0, PullNone>,
+    pub rx_d1: Pin<DynPinId, FunctionPio0, PullNone>,
+    pub crs: Pin<DynPinId, FunctionPio0, PullNone>,
 }
 
 #[allow(dead_code)]
@@ -24,31 +24,30 @@ impl EthPins {
     pub fn setup_pins(mut self, target_pio: TargetPio) -> EthPins {
         self = match target_pio {
             TargetPio::Pio0 => self.setup_pins_with_pio(DynFunction::Pio0),
-            TargetPio::Pio1 => self.setup_pins_with_pio(DynFunction::Pio1),
+            TargetPio::Pio1 => todo!(), // need to workaround dynpin to do this.
         };
         self
     }
 
-    fn setup_pins_with_pio(mut self, target_pio: DynFunction) -> EthPins {
-        [
-            &mut self.crs,
-            &mut self.tx_en,
-            &mut self.tx_d0,
-            &mut self.tx_d1,
-            &mut self.rx_d0,
-            &mut self.rx_d1,
-        ]
-        .map(|pin| pin.try_into_mode(DynPinMode::Function(target_pio)).unwrap());
+    fn setup_pins_with_pio(self, _target_pio: DynFunction) -> EthPins {
+        // Need a way to dynamically switch between PIO instances for this to work
+        // [
+        //     &mut self.crs,
+        //     &mut self.tx_en,
+        //     &mut self.tx_d0,
+        //     &mut self.tx_d1,
+        //     &mut self.rx_d0,
+        //     &mut self.rx_d1,
+        // ];
+        // .map(|&pin| pin.into_function());
         // Set up clock source for ETH board. Requires that the source clock is 50Mhz
-        self.ref_clk
-            .try_into_mode(DynPinMode::Function(DynFunction::Clock))
-            .unwrap();
+        // self.ref_clk.into_function();
         self
     }
 }
 
 fn clear_dma_channel(dma: &pac::DMA, channel: u8) {
-    dma.ch[channel as usize].ch_ctrl_trig.write(|w| {
+    dma.ch(channel as usize).ch_ctrl_trig().write(|w| {
         w.incr_read().set_bit();
         w.incr_write().clear_bit();
         w.treq_sel().permanent();
@@ -72,7 +71,7 @@ fn setup_dma(dma: &pac::DMA) {
     [dma_rx_ch, dma_tx_ch].map(|channel| clear_dma_channel(dma, channel));
 
     // Configure RX channel
-    dma.ch[dma_rx_ch as usize].ch_ctrl_trig.write(|w| {
+    dma.ch(dma_rx_ch as usize).ch_ctrl_trig().write(|w| {
         w.incr_read().clear_bit();
         w.incr_write().set_bit();
         unsafe {
@@ -83,7 +82,7 @@ fn setup_dma(dma: &pac::DMA) {
     });
 
     // Configure TX channel
-    dma.ch[dma_tx_ch as usize].ch_ctrl_trig.write(|w| {
+    dma.ch(dma_tx_ch as usize).ch_ctrl_trig().write(|w| {
         w.incr_read().set_bit();
         w.incr_write().clear_bit();
         unsafe {
@@ -174,7 +173,7 @@ pub fn init_eth(pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut pac:
 
     // Prepare SM for RX program
     let installed_rx = pio.install(&rx_program).unwrap();
-    let (sm_rx, _, _) = hal::pio::PIOBuilder::from_program(installed_rx)
+    let (sm_rx, _, _) = hal::pio::PIOBuilder::from_installed_program(installed_rx)
         .in_pin_base(rx_d0_index)
         .in_shift_direction(hal::pio::ShiftDirection::Right)
         .autopush(true)
@@ -185,7 +184,7 @@ pub fn init_eth(pins: EthPins, pio0: pac::PIO0, dma: pac::DMA, resets: &mut pac:
 
     // Prepare SM for TX program
     let installed_tx = pio.install(&tx_program).unwrap();
-    let (mut sm_tx, _, _) = hal::pio::PIOBuilder::from_program(installed_tx)
+    let (mut sm_tx, _, _) = hal::pio::PIOBuilder::from_installed_program(installed_tx)
         .out_pins(tx_d0_index, 2)
         .side_set_pin_base(tx_d0_index + 2)
         .clock_divisor_fixed_point(1, 0)

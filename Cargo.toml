@@ -17,8 +17,13 @@ ieee802_3_miim = "0.8"
 panic-probe = { version = "0.3", features = ["print-defmt"] }
 pio = "0.2"
 
-rp2040-hal = { version = "0.8", features = ["rt", "defmt", "rom-func-cache", "critical-section-impl"] }
-rp2040-boot2 = "0.2"
+rp2040-hal = { version = "0.10", features = [
+    "rt",
+    "defmt",
+    "rom-func-cache",
+    "critical-section-impl",
+] }
+rp2040-boot2 = "0.3"
 
 # cargo build/run
 [profile.dev]
@@ -71,4 +76,3 @@ debug-assertions = false
 incremental = false
 lto = 'fat'
 opt-level = 3
-
