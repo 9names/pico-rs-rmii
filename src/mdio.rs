@@ -30,8 +30,6 @@ impl Mdio {
 
     pub fn read_reg(&mut self, addr: u8, reg: u8) -> u16 {
         self.md_ck.into_push_pull_output();
-        self.md_io.into_push_pull_output();
-
         // Clear the state machine by clocking out 32 bits
         for _ in 0..32 {
             self.bit_clock_out(1);
@@ -59,7 +57,6 @@ impl Mdio {
         // TA
         self.bit_clock_out(0);
         self.bit_clock_out(0);
-        self.md_io.into_floating_input();
 
         let mut data: u16 = 0;
         for _ in 0..16 {
@@ -72,7 +69,6 @@ impl Mdio {
 
     pub fn write_reg(&mut self, addr: u8, reg: u8, value: u16) {
         self.md_ck.into_push_pull_output();
-        self.md_io.into_push_pull_output();
 
         // Clear the state machine by clocking out 32 bits
         for _ in 0..32 {
@@ -107,10 +103,10 @@ impl Mdio {
             self.bit_clock_out(bit as u8);
         }
         crate::trace!("mdio write {:X}", value);
-        self.md_io.into_floating_input();
     }
 
     fn bit_clock_out(&mut self, bit: u8) {
+        self.md_io.into_push_pull_output();
         self.md_ck.set_low().unwrap();
         self.delay.delay_us(1);
         let pinstate = if bit == 1 {
@@ -124,11 +120,11 @@ impl Mdio {
     }
 
     fn bit_clock_in(&mut self) -> u16 {
+        self.md_io.into_floating_input();
         self.md_ck.set_low().unwrap();
         self.delay.delay_us(1);
-        self.md_ck.set_high().unwrap();
-        self.md_io.into_floating_input();
         let bit = if self.md_io.is_high().unwrap() { 1 } else { 0 };
+        self.md_ck.set_high().unwrap();
         self.delay.delay_us(1);
         bit
     }
