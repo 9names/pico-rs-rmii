@@ -1,9 +1,10 @@
 use crate::delay::Delay;
-use embedded_hal::digital::v2::{InputPin, OutputPin, PinState};
+// use embedded_hal_0_2::digital::v2::{InputPin, OutputPin, PinState};
+use embedded_hal::digital::{InputPin, OutputPin, PinState};
 use ieee802_3_miim::Miim;
 use rp2040_hal::gpio::{
-    bank0::Gpio14, DynPinId, FunctionSio, FunctionSioOutput, InOutPin, Pin, PullDown, PullNone,
-    SioOutput,
+    bank0::Gpio14, DynFunction, DynPinId, DynSioConfig, FunctionSio, FunctionSioOutput, InOutPin,
+    Pin, PullDown, PullNone, SioOutput,
 };
 
 impl Miim for Mdio {
@@ -17,14 +18,14 @@ impl Miim for Mdio {
 }
 
 pub struct Mdio {
-    md_io: InOutPin<Pin<Gpio14, FunctionSio<SioOutput>, PullDown>>,
+    md_io: Pin<DynPinId, DynFunction, PullDown>,
     md_ck: Pin<DynPinId, FunctionSioOutput, PullNone>,
     delay: crate::delay::Delay,
 }
 
 impl Mdio {
     pub fn new(
-        md_io: InOutPin<Pin<Gpio14, FunctionSio<SioOutput>, PullDown>>,
+        md_io: Pin<DynPinId, DynFunction, PullDown>,
         md_ck: Pin<DynPinId, FunctionSioOutput, PullNone>,
     ) -> Mdio {
         Mdio {
@@ -62,8 +63,6 @@ impl Mdio {
         // TA
         self.bit_clock_out(0);
         self.bit_clock_out(0);
-        // set pin as floating
-        self.md_io.set_high().unwrap();
 
         let mut data: u16 = 0;
         for _ in 0..16 {
@@ -108,31 +107,33 @@ impl Mdio {
             self.bit_clock_out(bit as u8);
         }
         crate::trace!("mdio write {:X}", value);
-        // Leave the pin floating
-        self.md_io.set_high().unwrap();
     }
 
     fn bit_clock_out(&mut self, bit: u8) {
+        // set i/o pin as push-pull output
+        self.md_io
+            .try_set_function(DynFunction::Sio(DynSioConfig::Output))
+            .unwrap();
         self.md_ck.set_low().unwrap();
-        self.delay.delay_us(1);
         let pinstate = if bit == 1 {
             PinState::High
         } else {
             PinState::Low
         };
+        self.delay.delay_us(1);
         self.md_io.set_state(pinstate).unwrap();
         self.md_ck.set_high().unwrap();
-        self.delay.delay_us(1);
     }
 
     fn bit_clock_in(&mut self) -> u16 {
+        // set i/o pin as floating input
+        self.md_io
+            .try_set_function(DynFunction::Sio(DynSioConfig::Input))
+            .unwrap();
         self.md_ck.set_low().unwrap();
         self.delay.delay_us(1);
-        self.md_ck.set_high().unwrap();
-        // set pin floating
-        self.md_io.set_high().unwrap();
         let bit = if self.md_io.is_high().unwrap() { 1 } else { 0 };
-        self.delay.delay_us(1);
+        self.md_ck.set_high().unwrap();
         bit
     }
 }

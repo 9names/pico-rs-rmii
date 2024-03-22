@@ -1,4 +1,4 @@
-use embedded_hal::blocking::delay::{DelayMs, DelayUs};
+use embedded_hal_0_2::blocking::delay::{DelayMs, DelayUs};
 use rp2040_hal::pac;
 
 pub struct Delay {

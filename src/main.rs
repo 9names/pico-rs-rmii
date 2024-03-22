@@ -8,7 +8,7 @@ use crate::{
 
 use defmt::*;
 use defmt_rtt as _;
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::digital::OutputPin;
 mod clocks;
 mod delay;
 mod mdio;
@@ -58,7 +58,7 @@ fn main() -> ! {
     };
 
     let mut mdio = Mdio::new(
-        hal::gpio::InOutPin::new(pins.gpio14.into_push_pull_output()),
+        pins.gpio14.reconfigure().into_dyn_pin(),
         pins.gpio15
             .into_push_pull_output()
             .into_pull_type()
